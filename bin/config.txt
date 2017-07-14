@@ -1,0 +1,22 @@
+
+%% The port list listened by X3 server
+%% Example:
+%%       You want X3 server to listen port 1000 and 1001
+%%       [1000,1001].
+
+[50000,50001].
+
+%% The log level, default is log 1
+%%
+%%   log1. ----> Basic log level, only basic trace will be printed.
+%%   log2. ----> Medium log level.
+%%   log3. ----> Highest log level, all the trace will be printed
+%%               Note: set log1 will impact performance.
+
+"log1".
+
+%% The full path of the log file, create the file if it not exist
+%% If the file exist, overwrite the old file.
+
+"/home/X3_Project/x3_server_erlang/x3_server_erl/bin/xx.log".
+

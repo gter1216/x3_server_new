@@ -1,0 +1,164 @@
+-- Nokia X3 protocol asn file
+-- Created on June 26, 2017
+-- Author: Charles Xu
+
+X3-PROTOCOL DEFINITIONS IMPLICIT TAGS ::=
+
+BEGIN
+
+-- IE
+
+ProtocolVersion ::= ENUMERATED {
+    io1(1),
+    io2(2),
+    io3(3),
+    io4(4)   
+} -- current version is io2.
+
+
+MessageSerialNo ::= INTEGER(0..4294967295)
+
+
+NEID ::= OCTET STRING(SIZE(1..256))
+
+
+ICIDValue ::= OCTET STRING(SIZE(1..255))
+
+
+CCCId ::= INTEGER(0..4294967295)
+
+
+IpAddress ::= OCTET STRING (SIZE(4..16))
+
+
+Port ::= INTEGER(0..65535)
+
+
+IPPortInfo ::= SEQUENCE
+{
+    port     [0]IMPLICIT Port,
+    ipAddr   [1]IMPLICIT IpAddress
+}
+
+
+CreateLICTResult ::= ENUMERATED {
+     tunnelCreateSuccess  (0),
+     tunnelCreateFail     (1)
+}
+
+
+DataDirection  ::= ENUMERATED {
+     upLink      (0),
+     downLink    (1)
+}
+
+
+MediaType ::=OCTET STRING (SIZE(1..32))
+
+
+ProtocolType ::= INTEGER(0..255)
+
+
+DataPayload ::= OCTET STRING(SIZE(1..65535))
+
+
+PayloadList ::= SEQUENCE SIZE(1..200) OF SEQUENCE {
+        mediaType       [0]MediaType,
+        protocolType    [1]ProtocolType,
+        payload         [2]DataPayload
+}
+
+
+DeleteLICTReason ::= ENUMERATED {
+       callEnd     (0),
+       abnormal    (1)
+}
+
+
+TunnelFailureReason ::= ENUMERATED {
+        usernumberNotExist        (0),
+        monitorNumerNotExist      (1),
+        monitorNumberBeSet        (2),
+        parameterError            (3),
+        resourceLimited           (4),
+        noMonitor                 (5),
+        otherReason               (255)
+}
+
+
+-- MESSAGE
+
+
+CreateLICTReq ::= SEQUENCE{
+        messageSerialNo  [0]IMPLICIT  MessageSerialNo,
+        neID             [1]IMPLICIT  NEID,
+        icidValue        [2]IMPLICIT  ICIDValue,
+        cCC-ID           [3]IMPLICIT  CCCId,
+        termAddr         [4]IMPLICIT  IPPortInfo OPTIONAL  -- not implement yet
+}
+
+
+CreateLICTAck ::= SEQUENCE{
+        messageSerialNo          [0]IMPLICIT  MessageSerialNo,
+        icidValue                [1]IMPLICIT  ICIDValue,
+        cCC-ID                   [2]IMPLICIT  CCCId,
+        x3TunnelCreateResult     [3]IMPLICIT  CreateLICTResult,
+        x3TunnelFailureReason    [4]IMPLICIT  TunnelFailureReason OPTIONAL -- not implement yet
+}
+
+
+DeleteLICTReq ::= SEQUENCE {
+        messageSerialNo          [0]IMPLICIT  MessageSerialNo,
+        icidValue               [1]IMPLICIT  ICIDValue,
+        cCC-ID                  [2]IMPLICIT  CCCId,
+        x3TunnelDeleteReason    [3]IMPLICIT  DeleteLICTReason  OPTIONAL
+}
+
+
+DeleteLICTAck ::= SEQUENCE {
+          messageSerialNo          [0]IMPLICIT  MessageSerialNo,
+          icidValue               [1]IMPLICIT  ICIDValue,
+          cCC-ID                  [2]IMPLICIT  CCCId
+      }
+
+
+CommunicationContentReport ::= SEQUENCE {
+          dataSerialNo            [0]IMPLICIT  MessageSerialNo,
+          icidValue               [1]IMPLICIT  ICIDValue,
+          cCC-ID                  [2]IMPLICIT  CCCId,
+          dataDirect              [3]IMPLICIT  DataDirection,
+          payloadList             [4]IMPLICIT  PayloadList
+}
+
+
+X3CheckStateReq ::= SEQUENCE {
+          neID        [0]IMPLICIT NEID
+}
+
+
+X3CheckStateAck ::= SEQUENCE {
+          neID        [0]IMPLICIT NEID
+}
+
+
+X3Interface ::= SEQUENCE {
+          protocolVersion   [0]IMPLICIT   ProtocolVersion,
+          x3cmdMessage      [1]CHOICE {
+                 createLictReq                [0]IMPLICIT CreateLICTReq,
+                 createLictAck                [1]IMPLICIT CreateLICTAck,
+                 deleteLictReq                [2]IMPLICIT DeleteLICTReq,
+                 deleteLictAck                [3]IMPLICIT DeleteLICTAck,
+                 communicationContentReport   [4]IMPLICIT CommunicationContentReport,
+                 x3CheckStateReq              [5]IMPLICIT X3CheckStateReq,
+                 x3CheckStateAck              [6]IMPLICIT X3CheckStateAck
+          }
+}
+
+
+END
+
+
+
+
+
+
