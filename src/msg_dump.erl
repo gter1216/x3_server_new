@@ -35,7 +35,7 @@ start() ->
 	%% send message
 	ok = gen_tcp:send(Socket, Bytes),
 	
-    io:format("msg dump file generated ~p~n", [MsgDumpFile]).
+    io:format("~n msg dump file generated ~p~n", [MsgDumpFile]).
 
 %% 	%% close the socket
 %%  	ok = gen_tcp:close(Socket).

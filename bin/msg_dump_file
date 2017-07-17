@@ -1,0 +1,5 @@
+message summary is: 
+ [{communicationContentReport,1369},
+  {x3CheckStateReq,1},
+  {deleteLictReq,1},
+  {createLictReq,1}]

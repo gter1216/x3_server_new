@@ -95,14 +95,14 @@ parent_loop(Socket) ->
 			
 			put(msg_dump_file, MsgDumpFile) ,
 			
-			IoDevice = file:open(MsgDumpFile, [write]),
+			{ok, IoDevice} = file:open(MsgDumpFile, [write]),
 			
 			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]),
 			
 			parent_loop(Socket);
 		{error, closed} ->
-			file:close(get(msg_dump_file)),
-			io:format("parent server closed")
+			file:close(get(msg_dump_file))
+%% 			io:format("parent server closed")
 	end.
 
 

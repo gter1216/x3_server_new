@@ -62,13 +62,13 @@ case "$1" in
         ps -efww | grep -w 'beam.smp' | grep -v grep | cut -c 9-15 | xargs kill -9
         if [ $# -eq 1 ]
         then
-            sleep 1s
+            sleep 2s
             cd ../src && erlc *.erl && cd -
             erl -noshell -s x3_server start &
         else
             if [ "$2" = debug ]
             then
-                sleep 1s
+                sleep 2s
                 cd ../src && erlc *.erl && cd -
                 erl -s x3_server start
             else
