@@ -65,6 +65,19 @@ test_case_001(MsgSerialNo, NeId, ICIDValue, CCCId) ->
 	%% send message
 	ok = gen_tcp:send(Socket, Bytes),
 	
+	DeleteLICTReq = #'DeleteLICTReq'{messageSerialNo = MsgSerialNo,
+									 icidValue = ICIDValue,
+									 'cCC-ID' = CCCId},
+	
+	X3CmdMessage2 = {deleteLictReq, DeleteLICTReq},
+	
+	Bytes2 = x3_lib:encode_x3_interface_msg(X3CmdMessage2),
+	
+	io:format("msg byte is ~w~n", [Bytes2]),
+	
+	%% send message
+	ok = gen_tcp:send(Socket, Bytes2),
+	
 	%% close the socket
  	ok = gen_tcp:close(Socket).
 

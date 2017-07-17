@@ -35,7 +35,7 @@ start() ->
     
     {ok, Terms} = file:consult("../bin/config.txt"),
 	
-	[PortList, LogLevel, LogFile] = Terms,
+	[PortList, LogLevel, LogFile, _MsgDumpFile] = Terms,
     
     io:format("Listening port list is ~p~n", [PortList]),
     io:format("Log level is ~p~n", [LogLevel]),
@@ -44,7 +44,10 @@ start() ->
 	ok = pm_init(),
     
     lists:foldl(fun(Port, Acc) -> 
-								  Pid = spawn(fun() -> start_server(Port, LogLevel, LogFile) end),
+								  Pid = spawn(fun() -> start_server(Port, 
+																	list_to_atom(LogLevel), 
+																	LogFile) 
+											  end),
 								  PidName = list_to_atom(integer_to_list(Port)),
 								  register(PidName, Pid),
 								  [Pid|Acc]
@@ -52,7 +55,55 @@ start() ->
 	
 	io:format("The X3 server has been successfully started!"),
 	
+	start_parent_server(),
+	
 	ok.
+
+
+%% ====================================================================
+%% start parent server to contorl the sever behaviour
+%% lisenting port is 31818
+%%
+%% input:  
+%%
+%%
+%% output: 
+%%
+%% ====================================================================
+start_parent_server() ->
+	{ok, Listen} = gen_tcp:listen(31818, [binary,
+										  {active, false},
+										  {packet, 0},
+										  {reuseaddr, true},
+										  {keepalive, true},
+										  {exit_on_close, false}]),
+	
+	parent_par_connect(Listen).
+
+parent_par_connect(Listen) ->
+	
+	{ok, Socket} = gen_tcp:accept(Listen),
+
+	spawn(fun() -> parent_loop(Socket) end),
+	
+	parent_par_connect(Listen).
+
+parent_loop(Socket) ->
+	case gen_tcp:recv(Socket, 0) of
+		{ok, Bin}->
+			#msg_dump{msg_dump_file = MsgDumpFile} = binary_to_term(Bin),
+			
+			put(msg_dump_file, MsgDumpFile) ,
+			
+			IoDevice = file:open(MsgDumpFile, [write]),
+			
+			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]),
+			
+			parent_loop(Socket);
+		{error, closed} ->
+			file:close(get(msg_dump_file)),
+			io:format("parent server closed")
+	end.
 
 
 %% ====================================================================
@@ -112,13 +163,14 @@ start_server(Port, LogLevel, LogFile) ->
 	{ok, Listen} = gen_tcp:listen(Port, [binary,
 										 {active, false}]),
 	
-	
 	if
 		LogLevel >= log1 ->
 			{ok, FileDes} =  file:open(LogFile, [write]),
 			io:format(FileDes, "Server parent worker ~w start to listen the port ~w ... ~n", 
 					  [self(), Port]),
-			file:close(FileDes)
+			file:close(FileDes);
+		true ->
+			pass
 	end,
 	
 	par_connect(Listen, Port, LogLevel, LogFile).
@@ -156,13 +208,17 @@ worker_main(Socket, State) ->
 	put(pid_name, PidName),
 	put(file_des, FileDes),
 	put(log_level, LogLevel),
+	put(socket, Socket),
 	
 	if
 		LogLevel >= log1 ->
 			io:format(FileDes,
 					  "Worker ~w (~w) start receive packets from ip: ~w, port: ~w ... ~n", 
-					  [PidName, self(), ClientIP, ClientPort])
+					  [PidName, self(), ClientIP, ClientPort]);
+		true ->
+			pass
 	end,
+	
 
 	loop(Socket).
 
@@ -174,24 +230,34 @@ loop(Socket) ->
 		{ok, Bin} ->
 			
 			LogLevel = get(log_level),
+			
+%% 			io:format("Worker ~p received data = ~p~n", 
+%% 					  [get(pid_name), Bin]),
+			
 			if
 				LogLevel >= log3 ->
 					io:format(get(file_des),
 							  "Worker ~p received data = ~p~n", 
-							  [get(pid_name), Bin])
+							  [get(pid_name), Bin]);
+				true ->
+					pass
 			end,
 			
-			put(socket, Socket),
 			handle_data(Bin),
             loop(Socket);
 		
 		{error, closed} ->
 			
 			LogLevel = get(log_level),
+			
+			FileDes = get(file_des),
+			
 			if
 				LogLevel >= log1 ->
-					io:format(get(file_des),
-							  "Server socket closed~n")
+					io:format(FileDes,
+							  "Server socket closed~n",[]);
+				true ->
+					pass
 			end,
 			file:close(get(log_file))
 	end.
@@ -235,7 +301,9 @@ handle_create_lict_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w received create lict req msg ~p~n", 
-					  [get(pid_name), Msg])
+					  [get(pid_name), Msg]);
+	    true ->
+			pass
 	end,
 	
 	ets:update_counter(pm_table, createLictReq, 1),
@@ -259,14 +327,18 @@ handle_create_lict_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w send create lict ack msg ~p~n", 
-					  [get(pid_name), X3CmdMessage])
+					  [get(pid_name), X3CmdMessage]);
+		true ->
+			pass
 	end,
 	
 	if
 		LogLevel >= log3 ->
 			io:format(get(file_des),
-					  "Worker ~w send create lict ack msg ~p~n", 
-					  [get(pid_name), Bytes])
+					  "Worker ~w send data ~p~n", 
+					  [get(pid_name), Bytes]);
+		true ->
+			pass
 	end,
 	
 	gen_tcp:send(Socket, Bytes).
@@ -287,7 +359,9 @@ handle_delete_lict_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w received delete lict req msg ~p~n", 
-					  [get(pid_name), Msg])
+					  [get(pid_name), Msg]);
+		true ->
+			pass
 	end,
 	
 	ets:update_counter(pm_table, deleteLictReq, 1),
@@ -310,14 +384,18 @@ handle_delete_lict_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w send delete lict ack msg ~p~n", 
-					  [get(pid_name), X3CmdMessage])
+					  [get(pid_name), X3CmdMessage]);
+		true ->
+			pass
 	end,
 	
 	if
 		LogLevel >= log3 ->
 			io:format(get(file_des),
-					  "Worker ~w send delete lict ack msg ~p~n", 
-					  [get(pid_name), Bytes])
+					  "Worker ~w send data ~p~n", 
+					  [get(pid_name), Bytes]);
+		true ->
+			pass
 	end,
 	
 	gen_tcp:send(Socket, Bytes).
@@ -338,7 +416,9 @@ handle_x3_check_state_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w received check state req msg ~p~n", 
-					  [get(pid_name), Msg])
+					  [get(pid_name), Msg]);
+		true ->
+			pass
 	end,
 	
 	ets:update_counter(pm_table, x3CheckStateReq, 1),
@@ -357,14 +437,18 @@ handle_x3_check_state_req(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w send check state ack msg ~p~n", 
-					  [get(pid_name), X3CmdMessage])
+					  [get(pid_name), X3CmdMessage]);
+		true ->
+			pass
 	end,
 	
 	if
 		LogLevel >= log3 ->
 			io:format(get(file_des),
-					  "Worker ~w send check state ack msg ~p~n", 
-					  [get(pid_name), Bytes])
+					  "Worker ~w send data ~p~n", 
+					  [get(pid_name), Bytes]);
+		true ->
+			pass
 	end,
 	
 	gen_tcp:send(Socket, Bytes).
@@ -385,7 +469,9 @@ handle_ccr(Msg) ->
 		LogLevel >= log2 ->
 			io:format(get(file_des),
 					  "Worker ~w received cc report msg ~p~n", 
-					  [get(pid_name), Msg])
+					  [get(pid_name), Msg]);
+		true ->
+			pass
 	end,
 	
 	ets:update_counter(pm_table, communicationContentReport, 1),

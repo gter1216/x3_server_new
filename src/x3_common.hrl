@@ -6,4 +6,8 @@
 
 -define(x3_server_port, 10918).
 
+-define(x3_parent_server_port, 31818).
+
 -define(protocol_version, 'io2').
+
+-record(msg_dump, {msg_dump_file}).
