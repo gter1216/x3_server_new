@@ -14,7 +14,7 @@
 %%   log3. ----> Highest log level, all the trace will be printed
 %%               Note: set log3 will impact performance.
 
-"log1".
+"log3".
 
 %% The full path of the log file, create the file if it not exist
 %% If the file exist, overwrite the old file.
