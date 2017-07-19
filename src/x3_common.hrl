@@ -10,4 +10,6 @@
 
 -define(protocol_version, 'io2').
 
+-record(rtp_dump, {rtp_dump_file}).
+
 -record(msg_dump, {msg_dump_file}).

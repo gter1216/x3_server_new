@@ -21,10 +21,13 @@
 
 "/home/X3_Project/x3_server_erlang/x3_server_erl/bin/xx.log".
 
-
 %% The full path of the msg dump file
 
 "/home/X3_Project/x3_server_erlang/x3_server_erl/bin/msg_dump_file".
+
+%% The full path of the generated rtp dump file, the extension should be pcap
+
+"/home/X3_Project/x3_server_erlang/x3_server_erl/bin/rtp_dump.pcap".
 
 
 

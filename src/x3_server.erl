@@ -6,6 +6,8 @@
 -module(x3_server).
 -include("X3-PROTOCOL.hrl").
 -include("x3_common.hrl").
+-include("enet_types.hrl").
+-include("enet_pcap.hrl").
 
 %% ====================================================================
 %% API functions
@@ -42,6 +44,8 @@ start() ->
     io:format("Log file is ~p~n", [LogFile]),
 	
 	ok = pm_init(),
+	
+	ok = feature_init(),
     
     lists:foldl(fun(Port, Acc) -> 
 								  Pid = spawn(fun() -> start_server(Port, 
@@ -91,13 +95,9 @@ parent_par_connect(Listen) ->
 parent_loop(Socket) ->
 	case gen_tcp:recv(Socket, 0) of
 		{ok, Bin}->
-			#msg_dump{msg_dump_file = MsgDumpFile} = binary_to_term(Bin),
+			Command = binary_to_term(Bin),
 			
-			put(msg_dump_file, MsgDumpFile) ,
-			
-			{ok, IoDevice} = file:open(MsgDumpFile, [write]),
-			
-			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]),
+			handle_command(Command),
 			
 			parent_loop(Socket);
 		{error, closed} ->
@@ -105,6 +105,52 @@ parent_loop(Socket) ->
 %% 			io:format("parent server closed")
 	end.
 
+
+%% ====================================================================
+%% handle command for the parent server
+%%
+%% input:  
+%%
+%%
+%% output: 
+%%
+%% ====================================================================
+handle_command(Command) ->
+	
+	case Command of 
+		
+		{dump_msg, Arg} ->
+			
+			#msg_dump{msg_dump_file = MsgDumpFile} = Arg,
+			
+			put(msg_dump_file, MsgDumpFile) ,
+			
+			{ok, IoDevice} = file:open(MsgDumpFile, [write]),
+			
+			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]);
+		
+		{start_dump_rtp, Arg}->
+			 
+			#rtp_dump{rtp_dump_file = RtpDumpFile} = Arg,
+ 			
+			%% write PCAP header to the rtp dump file
+   	        {ok, FileDes} = file:open(RtpDumpFile, [write]),
+	
+	        PCAPHdr = default_header(),
+	
+	        ok = file:write(FileDes, enet_pcap:encode_header(PCAPHdr)),
+			
+			%% enable rtp dump feature
+			ets:insert(feature_table, [{dump_rtp, on, RtpDumpFile}]);
+		
+		
+		{stop_dump_rtp, _Arg} ->
+			
+			ets:insert(feature_table, [{dump_rtp, off, null}])
+	
+	end.
+			
+			
 
 %% ====================================================================
 %%
@@ -144,6 +190,27 @@ pm_init() ->
 						  {deleteLictReq, 0},
 						  {x3CheckStateReq, 0},
 						  {communicationContentReport, 0}]),
+	
+	ok.
+
+%% ====================================================================
+%% feature_init()
+%%
+%% init some feature switches.
+%%
+%% input: 
+%%
+%% off = ets:lookup_element(feature_table, dump_rtp, 2).
+%%
+%% null = ets:lookup_element(feature_table, dump_rtp, 3).
+%%
+%% output: ok
+%% ====================================================================
+feature_init() ->
+	
+	ets:new(feature_table, [named_table,public]),
+	
+	ets:insert(feature_table, [{dump_rtp, off, null}]),
 	
 	ok.
 
@@ -476,6 +543,19 @@ handle_ccr(Msg) ->
 	
 	ets:update_counter(pm_table, communicationContentReport, 1),
 	
+	case ets:lookup_element(feature_table, dump_rtp, 2) of
+		off ->
+			pass;
+		on ->
+			RtpDumpFile = ets:lookup_element(feature_table, dump_rtp, 3),
+			
+			{'CommunicationContentReport', _T1, _T2, _T3, _T4, PayLodList} = Msg,
+			
+			[{'PayloadList_SEQOF', _MediaType, _ProtocolType, PayLoad}] = PayLodList,
+			
+			dump_rtp_file(PayLoad, RtpDumpFile)
+	end,
+	
 	ok.
 
 
@@ -493,7 +573,68 @@ make_pid_name(SPort,CPort) ->
     list_to_atom(FullName).
 
 
+%% ====================================================================
+%% dump_rtp_file(PayLoad, RtpDumpFile)
+%%
+%% Add UDP, IP, MAC, and PCAP header to constuct wireshark understood 
+%% ethernet packets,
+%%
+%% input: 
+%%      PayLoad -> Binary, pure rtp bytes
+%%
+%%      RtpDumpFile -> 
+%% ====================================================================
+dump_rtp_file(PayLoadBin, RtpDumpFile) ->
+	
+	SrcPort = 32438,
+	DstPort = 32439,
+	
+	Pkt = #udp{src_port = <<SrcPort:16/big>>,
+			   dst_port = <<DstPort:16/big>>,
+			   data = PayLoadBin},
+	
+	UdpPkt = enet_udp:encode(Pkt, []),
+	
+	Pkt2 = #ipv4{proto = udp,
+				 hdr_csum = 0,
+				 src = <<10,11,13,95>>,
+				 dst = <<10,11,13,234>>,
+				 options = <<>>,
+				 data = UdpPkt},
+	
+	Ipv4Pkt = enet_ipv4:encode(Pkt2, []),
+	
+	Pkt3 = #eth{dst = <<0, 3, 186, 166, 12, 64>>,
+				src = <<224, 48, 5, 250, 28, 226>>,
+				type = 2048, %% Ipv4
+				data = Ipv4Pkt},
+	
+	EthPkt = enet_eth:encode(Pkt3, []),
+	
+	{ok, FileDes} = file:open(RtpDumpFile, [append]),
+	
+	PCAPHdr = default_header(),
+	
+	ok = file:write(FileDes, enet_pcap:encode_header(PCAPHdr)),
+	
+	PCAPPkt = #pcap_pkt{ts = enet_pcap:now_to_ts(),
+						orig_len = byte_size(EthPkt),
+						data = EthPkt},
+	
+	ok = file:write(FileDes, enet_pcap:encode_packet(default_header(), PCAPPkt)),
+	
+    file:close(FileDes).
 
+
+%% ==================================================================
+
+default_header() ->
+    #pcap_hdr{version={2, 4},
+              tz_correction=0,
+              sigfigures=0,
+              snaplen=65535,
+              datalinktype=1,
+              endianness=little}.
 
 
 

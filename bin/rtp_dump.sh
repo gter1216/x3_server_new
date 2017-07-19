@@ -9,19 +9,29 @@
 # sub function
 usage(){
     echo "usage: "
-    echo "   ./msg_dump "
+    echo "   ./rtp_dump start "
+    echo "   ./rtp_dump stop "
 }
 
 # main function
 
 # input parameter check
-if [ $# -ne 0 ]
+if [ $# -ne 2 ]
 then
     usage
     exit 1
 fi
 
-
-cd ../src && erlc *.erl && cd -
-erl -noshell -s command start_msg_dump &
+case "$1" in
+    "start")
+        erl -noshell -s command start_rtp_dump &
+        ;;
+    "stop")
+        erl -noshell -s command stop_rtp_dump &
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
 
