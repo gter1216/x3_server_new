@@ -1,5 +1,5 @@
 message summary is: 
- [{communicationContentReport,1369},
-  {x3CheckStateReq,1},
-  {deleteLictReq,1},
+ [{communicationContentReport,0},
+  {x3CheckStateReq,0},
+  {deleteLictReq,0},
   {createLictReq,1}]

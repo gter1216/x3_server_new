@@ -37,9 +37,10 @@ start() ->
     
     {ok, Terms} = file:consult("../bin/config.txt"),
 	
-	[PortList, LogLevel, LogFile, _MsgDumpFile] = Terms,
+	[PortList, SelfPort, LogLevel, LogFile, _MsgDumpFile, _RtpDumpFile] = Terms,
     
     io:format("Listening port list is ~p~n", [PortList]),
+	io:format("Server self port is ~p~n", [SelfPort]),
     io:format("Log level is ~p~n", [LogLevel]),
     io:format("Log file is ~p~n", [LogFile]),
 	
@@ -59,7 +60,7 @@ start() ->
 	
 	io:format("The X3 server has been successfully started!"),
 	
-	start_parent_server(),
+	start_parent_server(SelfPort),
 	
 	ok.
 
@@ -74,8 +75,8 @@ start() ->
 %% output: 
 %%
 %% ====================================================================
-start_parent_server() ->
-	{ok, Listen} = gen_tcp:listen(31818, [binary,
+start_parent_server(SelfPort) ->
+	{ok, Listen} = gen_tcp:listen(SelfPort, [binary,
 										  {active, false},
 										  {packet, 0},
 										  {reuseaddr, true},
@@ -141,12 +142,17 @@ handle_command(Command) ->
 	        ok = file:write(FileDes, enet_pcap:encode_header(PCAPHdr)),
 			
 			%% enable rtp dump feature
-			ets:insert(feature_table, [{dump_rtp, on, RtpDumpFile}]);
-		
+			ets:insert(feature_table, [{dump_rtp, on, RtpDumpFile}]),
+			
+			file:close(FileDes);
 		
 		{stop_dump_rtp, _Arg} ->
 			
-			ets:insert(feature_table, [{dump_rtp, off, null}])
+			ets:insert(feature_table, [{dump_rtp, off, null}]);
+		
+		{stop_server, _Arg} ->
+			
+			init:stop()
 	
 	end.
 			
@@ -586,21 +592,18 @@ make_pid_name(SPort,CPort) ->
 %% ====================================================================
 dump_rtp_file(PayLoadBin, RtpDumpFile) ->
 	
-	SrcPort = 32438,
-	DstPort = 32439,
-	
-	Pkt = #udp{src_port = <<SrcPort:16/big>>,
-			   dst_port = <<DstPort:16/big>>,
-			   data = PayLoadBin},
-	
-	UdpPkt = enet_udp:encode(Pkt, []),
+%% 	Pkt = #udp{src_port = <<SrcPort:16/big>>,
+%% 			   dst_port = <<DstPort:16/big>>,
+%% 			   data = PayLoadBin},
+%% 	
+%% 	UdpPkt = enet_udp:encode(Pkt, []),
 	
 	Pkt2 = #ipv4{proto = udp,
 				 hdr_csum = 0,
 				 src = <<10,11,13,95>>,
 				 dst = <<10,11,13,234>>,
 				 options = <<>>,
-				 data = UdpPkt},
+				 data = PayLoadBin},
 	
 	Ipv4Pkt = enet_ipv4:encode(Pkt2, []),
 	
@@ -613,10 +616,6 @@ dump_rtp_file(PayLoadBin, RtpDumpFile) ->
 	
 	{ok, FileDes} = file:open(RtpDumpFile, [append]),
 	
-	PCAPHdr = default_header(),
-	
-	ok = file:write(FileDes, enet_pcap:encode_header(PCAPHdr)),
-	
 	PCAPPkt = #pcap_pkt{ts = enet_pcap:now_to_ts(),
 						orig_len = byte_size(EthPkt),
 						data = EthPkt},
@@ -624,6 +623,8 @@ dump_rtp_file(PayLoadBin, RtpDumpFile) ->
 	ok = file:write(FileDes, enet_pcap:encode_packet(default_header(), PCAPPkt)),
 	
     file:close(FileDes).
+	
+%% 	init:stop().
 
 
 %% ==================================================================

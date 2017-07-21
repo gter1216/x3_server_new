@@ -13,8 +13,8 @@ usage(){
     echo "        start a x3 server with configuration defined in config.txt"
     echo "   ./x3_server stop    :" 
     echo "        stop a x3 server"
-    echo "   ./x3_server restart :"
-    echo "        restart a x3 server with configuration defined in config.txt"
+    #echo "   ./x3_server restart :"
+    #echo "        restart a x3 server with configuration defined in config.txt"
 }
 
 
@@ -33,7 +33,7 @@ case "$1" in
         if [ "$2" = debug ]
         then
            sleep 1s
-           cd ../src && erlc *.erl && cd -
+           #cd ../src && erlc *.erl && cd -
            erl -s x3_server start
         else
            if [ $# -gt 1 ]
@@ -42,7 +42,7 @@ case "$1" in
            elif [ $# -eq 1 ]
            then
                sleep 1s
-               cd ../src && erlc *.erl && cd -
+               #cd ../src && erlc *.erl && cd -
                erl -noshell -s x3_server start &
            else
                usage
@@ -52,30 +52,31 @@ case "$1" in
     "stop")
         if [ $# -eq 1 ]
         then
-            #erl -noshell -s x3_server stop
-            ps -efww | grep -w 'beam.smp' | grep -v grep | cut -c 9-15 | xargs kill -9
+            erl -noshell -s command stop_server &
+            #ps -efww | grep -w 'beam.smp' | grep -v grep | cut -c 9-15 | xargs kill -9
         else
             usage
         fi
         ;;
-    "restart")
-        ps -efww | grep -w 'beam.smp' | grep -v grep | cut -c 9-15 | xargs kill -9
-        if [ $# -eq 1 ]
-        then
-            sleep 2s
-            cd ../src && erlc *.erl && cd -
-            erl -noshell -s x3_server start &
-        else
-            if [ "$2" = debug ]
-            then
-                sleep 2s
-                cd ../src && erlc *.erl && cd -
-                erl -s x3_server start
-            else
-                usage
-            fi
-        fi
-        ;;
+    #"restart")
+    #    erl -noshell -s command stop_server &
+    #    #ps -efww | grep -w 'beam.smp' | grep -v grep | cut -c 9-15 | xargs kill -9
+    #    if [ $# -eq 1 ]
+    #    then
+    #        sleep 2s
+    #        #cd ../src && erlc *.erl && cd -
+    #        erl -noshell -s x3_server start &
+    #    else
+    #        if [ "$2" = debug ]
+    #        then
+    #            sleep 2s
+    #            #cd ../src && erlc *.erl && cd -
+    #            erl -s x3_server start
+    #        else
+    #            usage
+    #        fi
+    #    fi
+    #    ;;
     *)
         usage
         exit 1

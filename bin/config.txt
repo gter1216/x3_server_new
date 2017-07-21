@@ -7,6 +7,11 @@
 [50000,50001].
 %%[10917,10918,10919].
 
+%% Server self unique port
+%% If start several server application on the same machine, this port should
+%% be configured with different port
+31818.
+
 %% The log level, default is log 1
 %%
 %%   log1. ----> Basic log level, only basic trace will be printed.
@@ -14,7 +19,7 @@
 %%   log3. ----> Highest log level, all the trace will be printed
 %%               Note: set log3 will impact performance.
 
-"log3".
+"log2".
 
 %% The full path of the log file, create the file if it not exist
 %% If the file exist, overwrite the old file.

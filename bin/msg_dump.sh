@@ -22,6 +22,6 @@ then
 fi
 
 
-cd ../src && erlc *.erl && cd -
+#cd ../src && erlc *.erl && cd -
 erl -noshell -s command start_msg_dump &
 
