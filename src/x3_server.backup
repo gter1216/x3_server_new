@@ -1,0 +1,63 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+-mode(complie).
+
+main(["start"]) ->
+
+    io:format("Loading config from config.txt ... ~n"),
+    
+    {ok, Terms} = file:consult("./config.txt"),
+    
+    {ok, CurrentDir} = file:get_cwd(),
+    
+    BeamPath = string:trim(CurrentDir, trailing, "/bin") ++ "/src",
+    
+    code:add_pathz(BeamPath),
+    
+    [PortList, LogLevel, LogFile] = Terms,
+    
+    io:format("Listening port list is ~p~n", [PortList]),
+    io:format("Log level is ~p~n", [LogLevel]),
+    io:format("Log file is ~p~n", [LogFile]),
+    
+    ok = x3_server_main:start(PortList, list_to_atom(LogLevel), LogFile),
+
+    io:format("The X3 server has been running ... ~n");
+
+main(["stop"]) ->
+    try 
+        io:format("The X3 server has been shutdown!~n")
+    catch
+        _:_ ->
+           usage()
+    end;
+    
+main(["restart"]) ->
+    try 
+        io:format("The X3 server has been restarted ...~n")
+        
+        
+    catch
+        _:_ ->
+           usage()
+    end;
+
+main(_) ->
+    usage(). 
+
+
+usage() ->
+    io:format("usage: \n"),
+    halt(1).
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,47 @@
+%%%%%%%%%%%%%%%%% note: all paratmers should end with dot.
+
+%%%%%%%%%%%%%%%%%% sever start listening port list %%%%%%%%%%%%%%%%%%%%%% 
+%% {[50000,50001], []}       means only start listening ipv4 port 50000,50001
+%% {[], [50002,50003,50004]} means only start listening ipv6 port 50002,50003,50004
+%% {[50001],[50004]}         means start listening ipv4 port 50001 and ipv6 port 50004
+
+{[31100,31101],[31102,31103,31104]}.
+
+%%%%%%%%%%%%%%%%%% sever stop listening port list %%%%%%%%%%%%%%%%%%%%%%
+%% {all,all}          means stop listening all ports and server will be shut down.
+%% {[50000],[]}       means only stop listening ipv4 50000 port
+%% {[],[50002,50003]} means only stop listening ipv6 50002 and 50003 port
+%% {[50001],[50004]}  means stop listening ipv4 50001 port and ipv6 50004 port
+
+{all,all}.
+
+%%%%%%%%%%%%%%%%%% server common paramter %%%%%%%%%%%%%%%%%%%%%%
+"135.251.217.72".   %% The Ipv4 address listened by X3 server
+
+"7002::217:72".     %% The Ipv6 address listened by X3 server
+
+%% Server self unique port
+%% If start several server application on the same machine, this port should
+%% be configured with different port
+22218.
+
+%% The log level, default is log 1
+%%
+%%   log1. ----> Basic log level, only basic trace will be printed.
+%%   log2. ----> Medium log level.
+%%   log3. ----> Highest log level, all the trace will be printed
+%%               Note: set log3 will impact performance.
+
+"log2".
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,5 @@
+*.beam
+*.asn1db
+*.log
+*.dump
+*.save
