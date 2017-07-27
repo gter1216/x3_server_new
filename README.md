@@ -7,12 +7,6 @@ Usage:
 1. How to start X3 server
 
 1.1 Firstly, configure the config.txt file.
-
-[50000,50001].              --> the listening port of X3 server
-"log1".                     --> basic log level
-"/home/.../xx.log".         --> log file path
-"/home/.../msg_dump_file"   --> the file contains the msg count
-"/home/.../rtp_dump.pcap"   --> RTP pcap file from CC msg    
  
 1.2 cd bin && ./x3_server.sh start
 
@@ -20,24 +14,18 @@ Usage:
 
 ./x3_server.sh stop
 
-3. How to restart X3 server
+3. How to stop all X3 server
 
-./x3_server.sh restart
+./x3_server.sh stop all
 
-4. How to run X3 server in debug mode
+4. How to collect msg statistics log
 
-./x3_server.sh start debug
+./msg_dump.sh start
+./msg_dump.sh stop
 
-5. How to check msg count
-
-./msg_dump.sh
-
-6. How to start generate RTP pcap file for each CC msg.
+5. How to generate RTP pcap file for each CC msg.
 
 ./rtp_dump.sh start
-
-7. How to stop generate RTP pcap file for each CC msg.
-
 ./rtp_dump.sh stop
 
 
