@@ -42,6 +42,11 @@ start() ->
 	
 	{Ipv4PortList, Ipv6PortList} = StartPortList,
 	
+	io:format("Listening ipv4 addr: ~p, port: ~p~n", [Ipv4Addr, Ipv4PortList]),
+	io:format("Listening ipv6 addr: ~p, port: ~p~n", [Ipv6Addr, Ipv6PortList]),
+	io:format("Server self port is ~p~n", [SelfPort]),
+	io:format("Log level is ~p~n", [LogLevel]),
+	
 	ok = table_init(),
 	
 	ok = feature_init(),
