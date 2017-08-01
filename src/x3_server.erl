@@ -13,7 +13,8 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/0]).
+-export([start/0,
+		 logger/3]).
 
 %% -record(state, {pid_name,
 %% 				client_ip,
@@ -63,7 +64,7 @@ start() ->
 		   [Ipv4Addr, Ipv4PortList,Ipv6Addr, Ipv6PortList, SelfPort, LogLevel], 
 		   log1),
 	
-	logger("X3 Server successfully started! ~n", [], log1),
+%% 	logger("X3 Server successfully started! ~n", [], log1),
 	
     
     lists:foldl(fun(Port, Acc) -> 
@@ -115,6 +116,7 @@ start_parent_server(SelfPort) ->
 				Socket;
 			{error, eaddrinuse} ->
 				io:format("Server Self Port ~p is in used, server startup failed! ~n", [SelfPort]),
+				logger("Server Self Port ~p is in used, server startup failed! ~n", [SelfPort], log1),
 				init:stop()
 		end,
 	
@@ -347,6 +349,9 @@ start_server(ipv6, Ipv6Addr, Port) ->
 		{ok, Socket} ->
 			logger("Ipv6 Server ~w start to listen the port ~w ...", [self(), Port], log1),
 			
+%% 			O = inet:getopts(Socket, [recbuf]),
+%% 	        io:format("xxxxx rec buf is:~p~n", [O]),
+			
 			spawn(fun() -> 
 						  par_connect(ipv6, Socket, Port)
 				  end),
@@ -410,7 +415,7 @@ par_connect(ipv6, Listen, ServerPort) ->
 		  end),
 	
 	logger("IPV6 TCP socket established , worker ~w (~w) start receive packets from ip: ~w, port: ~w ... ", 
-		   [PidName, self(), ClientIP, ClientPort], 
+		   [PidName, self(), inet:ntoa(ClientIP), ClientPort], 
 		   log1),
 	
 	loop(Socket).
@@ -426,9 +431,10 @@ loop(Socket) ->
 %% 			try
 %% 				handle_data(Bin)
 %% 			catch
-%% 				_Exception:Reason ->
-%% 					logger("Error: Worker ~p(~w) died due to ~p", [get(pid_name), self(), Reason], log1)
-%% 			end
+%% 				Exception:Reason ->
+%% 					logger("Error: Worker ~p(~w) died due to exception: ~p~nreason: ~p", 
+%% 						   [get(pid_name), self(), Exception, Reason], log1)
+%% 			end,
 			inet:setopts(Socket, [{active,once}]),
 			loop(Socket);
 		{tcp_closed, Socket} ->

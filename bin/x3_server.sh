@@ -13,8 +13,8 @@ usage(){
     echo "        start a x3 server with configuration defined in config.txt"
     echo "   ./x3_server stop    :" 
     echo "        stop a x3 server"
-    #echo "   ./x3_server restart :"
-    #echo "        restart a x3 server with configuration defined in config.txt"
+    echo "   ./x3_server stop all :"
+    echo "        kill all the Erlang VM process belongs to the user"
 }
 
 
@@ -34,7 +34,7 @@ case "$1" in
         then
            sleep 1s
            #cd ../src && erlc *.erl && cd -
-           erl -s x3_server start
+           erl -s x3_server start -boot start_sasl -config elog.config &
         else
            if [ $# -gt 1 ]
            then
@@ -43,7 +43,7 @@ case "$1" in
            then
                sleep 1s
                #cd ../src && erlc *.erl && cd -
-               erl -noshell -s x3_server start &
+               erl -noshell -s x3_server start -boot start_sasl -config elog.config &
            else
                usage
            fi

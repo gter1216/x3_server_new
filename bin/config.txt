@@ -5,7 +5,7 @@
 %% {[], [50002,50003,50004]} means only start listening ipv6 port 50002,50003,50004
 %% {[50001],[50004]}         means start listening ipv4 port 50001 and ipv6 port 50004
 
-{[31100,31101],[31102,31103,31104]}.
+{[31101],[31102]}.
 
 %%%%%%%%%%%%%%%%%% sever stop listening port list %%%%%%%%%%%%%%%%%%%%%%
 %% {all,all}          means stop listening all ports and server will be shut down.
@@ -32,7 +32,7 @@
 %%   log3. ----> Highest log level, all the trace will be printed
 %%               Note: set log3 will impact performance.
 
-"log2".
+"log3".
 
 
 

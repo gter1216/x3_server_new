@@ -4,7 +4,7 @@
 
 -define(x3_server_ip, "135.251.217.72").
 -define(x3_server_ipv6, "7002::217:72").
--define(x3_server_port, 31100).
+-define(x3_server_port, 31101).
 -define(x3_server_port_ipv6, 31102).
 -define(protocol_version, 'io2').
 

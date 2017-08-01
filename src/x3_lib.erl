@@ -7,6 +7,8 @@
 -include("X3-PROTOCOL.hrl").
 -include("x3_common.hrl").
 
+-define(x3_header_size, 6).
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -17,6 +19,9 @@
 %% ==================================================================
 %% un_smush(BinPack)
 %%
+%% decode sticky tcp stream package, it's very complex
+%% implement by two process dictionary recv_buffer
+%%
 %% input: 
 %%
 %% ouput:
@@ -26,26 +31,38 @@
 %% example:
 %%
 %% ==================================================================
-un_smush(BinPack) ->
-	
-	decode_tcp_msg(BinPack, []).
+un_smush(<<16#aa, _/binary>> = BinStream) ->
+	decode_tcp_msg(BinStream, []);
 
+un_smush(BinStream) ->
+	BufferedBin = erase(recv_buffer),
+	x3_server:logger("current recv buffer is ~p;",[BufferedBin],log3),
+	Bin = <<BufferedBin/binary, BinStream/binary>>,
+	x3_server:logger("complete msg bin stream is ~p;",[Bin],log3),
+	un_smush(Bin).
 
-decode_tcp_msg(<<>>, Acc) ->
-	
+decode_tcp_msg(<<>>, Acc) ->	
 	Acc;
 
-decode_tcp_msg(BinPack, Acc) ->
-	
-	<<16#aa, 16#00, Len:16, Len:16, TotalBin/binary>> = BinPack,
-	
-	Length =  Len*8,
-	
-	<<Bin:Length, LeftBin/binary>> = TotalBin,
-	
-	decode_tcp_msg(LeftBin, Acc++[<<Bin:Length>>]).
+decode_tcp_msg(<<16#aa, 16#00, Len:16, Len:16, LeftBin1/binary>>, Acc) ->
+	LeftLen = size(LeftBin1),
+	if
+		LeftLen < Len ->
+			PartialBin = <<16#aa, 16#00, Len:16, Len:16, LeftBin1/binary>>,
+			CurrentBuffer = put(recv_buffer,PartialBin),
+			x3_server:logger("current recv buffer is ~p;~npartial bin is~p",[CurrentBuffer, PartialBin],log3),
+			Acc;
+		true ->
+			Length =  Len*8,
+			<<Bin:Length, LeftBin2/binary>> = LeftBin1,
+			decode_tcp_msg(LeftBin2, Acc++[<<Bin:Length>>])
+	end;
 
-
+decode_tcp_msg(PartialBin, Acc) ->
+	CurrentBuffer = put(recv_buffer,PartialBin),
+	x3_server:logger("current recv buffer is ~p;~npartial bin is~p",[CurrentBuffer, PartialBin],log3),
+	Acc.
+	
 
 %% ==================================================================
 %% encode_x3_interface_msg(MsgTag, Msg)
