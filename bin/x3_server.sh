@@ -34,7 +34,8 @@ case "$1" in
         then
            sleep 1s
            #cd ../src && erlc *.erl && cd -
-           erl -s x3_server start -boot start_sasl -config elog.config &
+           #erl -s x3_server start -boot start_sasl -config elog.config &
+           erl -s x3_server start &
         else
            if [ $# -gt 1 ]
            then
@@ -43,7 +44,8 @@ case "$1" in
            then
                sleep 1s
                #cd ../src && erlc *.erl && cd -
-               erl -noshell -s x3_server start -boot start_sasl -config elog.config &
+               #erl -noshell -s x3_server start -boot start_sasl -config elog.config &
+               erl -noshell -s x3_server start &
            else
                usage
            fi

@@ -427,14 +427,21 @@ loop(Socket) ->
 	receive
 		{tcp, Socket, Bin} ->
 			logger("Worker ~p(~w) received data = ~p", [get(pid_name), self(), Bin], log3),
-			handle_data(Bin),
-%% 			try
-%% 				handle_data(Bin)
-%% 			catch
-%% 				Exception:Reason ->
-%% 					logger("Error: Worker ~p(~w) died due to exception: ~p~nreason: ~p", 
-%% 						   [get(pid_name), self(), Exception, Reason], log1)
-%% 			end,
+%% 			handle_data(Bin),
+			try
+				handle_data(Bin)
+			catch
+				ExceptionClass:Term ->
+					StackTrace = erlang:get_stacktrace(),
+					PidName = get(pid_name),
+					Pid = self(),
+%% 				    io:format("=============== Crash Report =============~n"),
+%% 					io:format("Worker ~p(~w) crashed due to exception ~w: ~w~n",
+%% 							  [PidName, Pid, ExceptionClass, Term]),
+%% 				    io:format("stacktrace:~n~p~n~n",[StackTrace]),
+ 					generate_crash_dump(PidName,Pid,ExceptionClass,Term,StackTrace),
+					exit(crash)
+			end,
 			inet:setopts(Socket, [{active,once}]),
 			loop(Socket);
 		{tcp_closed, Socket} ->
@@ -722,6 +729,8 @@ log_init(LogLevel) ->
 	
 	LogFile = Dir++"/log/trace/"++Timestamp++".log",
 	
+%% 	CrashDumpFile = Dir++"/log/crash_log/"++Timestamp++".crashdump",
+	
 %% 	CrashReportFile = Dir++"/log/trace/"++Timestamp++".crashdump",	
 %% 	ok = error_logger:logfile({open, CrashReportFile}),
 	
@@ -730,7 +739,6 @@ log_init(LogLevel) ->
 	register(logproc, Pid),
 	
 	{ok, LogFile}.
-
 
 %% ====================================================================
 %% log_server_start(LogFile, LogLevel)
@@ -743,23 +751,31 @@ log_init(LogLevel) ->
 %% ====================================================================
 log_server_start(LogFile, LogLevel) ->
 	
-	{ok, FileDes} = file:open(LogFile, [write]),
+	{ok, TraceFileDes} = file:open(LogFile, [write]),
 	
-	log_server_loop(FileDes, LogLevel).
+	log_server_loop(TraceFileDes, LogLevel).
 
-log_server_loop(FileDes, LogLevel) ->
+log_server_loop(TraceFileDes, LogLevel) ->
 	
 	receive
-		{_From, {RxLogLevel, Info}} ->
+		{_From, {trace, RxLogLevel, Info}} ->
 			if
 				LogLevel >= RxLogLevel ->
 					TS = get_time_micro(erlang:timestamp()),
-					io:format(FileDes, "~s~n", [TS]),
-					io:format(FileDes, "~s~n", [Info]),
-					log_server_loop(FileDes, LogLevel);
+					io:format(TraceFileDes, "~s~n", [TS]),
+					io:format(TraceFileDes, "~s~n", [Info]),
+					log_server_loop(TraceFileDes, LogLevel);
 				true -> 
-					log_server_loop(FileDes, LogLevel)
-			end
+					log_server_loop(TraceFileDes, LogLevel)
+			end;
+		{_From, {crash, PidName, Pid, ExceptionClass, Term, StackTrace}} ->
+			TS = get_time_micro(erlang:timestamp()),
+			io:format(TraceFileDes, "~n~s~n", [TS]),
+			io:format(TraceFileDes, "=========================== Crash Report Begin ===========================~n",[]),
+            io:format(TraceFileDes, "Worker ~p(~w) crashed due to exception ~w: ~w~n",
+					  [PidName, Pid, ExceptionClass, Term]),
+			io:format(TraceFileDes, "stacktrace:~n~p~n",[StackTrace]),
+			io:format(TraceFileDes, "=========================== Crash Report End ===========================~n~n",[])
 	end.
 
 
@@ -776,7 +792,19 @@ logger(Format, VarList, LogLevel) ->
 	
 	Info = io_lib:format(Format, VarList),
 	
-	logproc ! {self(), {LogLevel, Info}}.
+	logproc ! {self(), {trace, LogLevel, Info}}.
+
+%% ====================================================================
+generate_crash_dump(PidName,Pid,ExceptionClass,Term,StackTrace) ->
+	
+	logproc ! {self(), {crash, PidName, Pid, ExceptionClass, Term, StackTrace}}.
+
+
+%% %% ====================================================================
+%% generate_crash_dump(PidName, Pid, ExceptionClass, Term, StackTrace) ->
+%% 
+%% 	logproc ! {self(), {crash, PidName, Pid, ExceptionClass, Term, StackTrace}}.	
+
 
 
 %% ====================================================================
