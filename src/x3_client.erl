@@ -105,7 +105,8 @@ test_case_002() ->
 	MsgSerialNo = 213,
     ICIDValue = "cscf-20170627152245",
 %%     CCCId = 10156,
-    CCCId = 4294967296,
+%%     CCCId = 4294967296,
+    CCCId = 10156,
 	
 	test_case_002(MsgSerialNo, ICIDValue, CCCId).
 
@@ -129,10 +130,10 @@ test_case_002(MsgSerialNo, ICIDValue, CCCId) ->
 									{packet, 0}]),
 	
 	%% send message
-	ok = gen_tcp:send(Socket, Bytes).
+	ok = gen_tcp:send(Socket, Bytes),
 	
-%% 	%% close the socket
-%%  	ok = gen_tcp:close(Socket).
+	%% close the socket
+ 	ok = gen_tcp:close(Socket).
 
 %% ==================================================================
 %% test_case_003
