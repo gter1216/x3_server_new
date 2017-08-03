@@ -435,20 +435,20 @@ loop(Socket) ->
 					StackTrace = erlang:get_stacktrace(),
 					PidName = get(pid_name),
 					Pid = self(),
-%% 				    io:format("=============== Crash Report =============~n"),
-%% 					io:format("Worker ~p(~w) crashed due to exception ~w: ~w~n",
-%% 							  [PidName, Pid, ExceptionClass, Term]),
-%% 				    io:format("stacktrace:~n~p~n~n",[StackTrace]),
+					
+					io:format("=========================== Crash Report Begin ===========================~n",[]),
+                    io:format("Worker ~p(~w) crashed due to exception ~w: ~w~n",
+					          [PidName, Pid, ExceptionClass, Term]),
+			        io:format("stacktrace:~n~p~n",[StackTrace]),
+			        io:format("=========================== Crash Report End ===========================~n~n",[]),					
+					
  					generate_crash_dump(PidName,Pid,ExceptionClass,Term,StackTrace),
 					exit(crash)
 			end,
 			inet:setopts(Socket, [{active,once}]),
 			loop(Socket);
 		{tcp_closed, Socket} ->
-			logger("Warning: Worker ~p(~w) died due to tcp socket closed", [get(pid_name), self()], log1);
-		{'EXIT', Pid, Reason} ->
-			logger("Error: Worker ~p(~w) died due to reason ~p, restart worker!", 
-				   [get(pid_name), Pid, Reason], log1)
+			logger("Warning: Worker ~p(~w) died due to tcp socket closed", [get(pid_name), self()], log1)
 	end.
 	
 
@@ -504,6 +504,7 @@ handle_create_lict_req(Msg) ->
 		case get_x3_state(IcidValue, CCCId) of
 			on ->
 				logger("Error: 7510 request to create an existed X3 tunnel~p", [Msg], log1),
+				io:format("Error: 7510 request to create an existed X3 tunnel~p~n",[Msg]),
 				#'CreateLICTAck'{messageSerialNo = MsgSerialNo,
 								 icidValue = IcidValue,
 								 'cCC-ID' = CCCId,
@@ -557,6 +558,7 @@ handle_delete_lict_req(Msg) ->
 			State when State == off orelse 
 						   State == undefined ->
 				logger("Error: 7510 request to delete an non-exist X3 tunnel~p", [Msg], log1),
+				io:format("Error: 7510 request to delete an non-exist X3 tunnel~p~n",[Msg]),
 			    #'DeleteLICTAck'{messageSerialNo = MsgSerialNo,
 								 icidValue = IcidValue,
 								 'cCC-ID' = CCCId}
@@ -633,7 +635,8 @@ handle_ccr(Msg) ->
 				end;	
 		State when State == off orelse 
 						   State == undefined ->
-			logger("Error: 7510 send CC msg on an non-existed X3 tunnel~p", [Msg], log1)
+			logger("Error: 7510 send CC msg on an non-existed X3 tunnel~p", [Msg], log1),
+			io:format("Error: 7510 send CC msg on an non-existed X3 tunnel~p~n",[Msg])
 	end,
 	
 	ok.
