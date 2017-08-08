@@ -41,7 +41,7 @@ un_smush(BinStream) ->
 	x3_server:logger("complete msg bin stream is ~p;",[Bin],log3),
 	un_smush(Bin).
 
-decode_tcp_msg(<<>>, Acc) ->	
+decode_tcp_msg(<<>>, Acc) ->
 	Acc;
 
 decode_tcp_msg(<<16#aa, 16#00, Len:16, Len:16, LeftBin1/binary>>, Acc) ->

@@ -736,8 +736,12 @@ log_init(LogLevel) ->
 	
 %% 	CrashReportFile = Dir++"/log/trace/"++Timestamp++".crashdump",	
 %% 	ok = error_logger:logfile({open, CrashReportFile}),
+
+	ets:new(log_table, [named_table,public]),
 	
-	Pid = spawn(fun() -> log_server_start(LogFile, LogLevel) end),
+	ets:insert(log_table, [{log_level, LogLevel}]),
+	
+	Pid = spawn(fun() -> log_server_start(LogFile) end),
 	
 	register(logproc, Pid),
 	
@@ -752,25 +756,20 @@ log_init(LogLevel) ->
 %%
 %% output:
 %% ====================================================================
-log_server_start(LogFile, LogLevel) ->
+log_server_start(LogFile) ->
 	
 	{ok, TraceFileDes} = file:open(LogFile, [write]),
 	
-	log_server_loop(TraceFileDes, LogLevel).
+	log_server_loop(TraceFileDes).
 
-log_server_loop(TraceFileDes, LogLevel) ->
+log_server_loop(TraceFileDes) ->
 	
 	receive
-		{_From, {trace, RxLogLevel, Info}} ->
-			if
-				LogLevel >= RxLogLevel ->
-					TS = get_time_micro(erlang:timestamp()),
-					io:format(TraceFileDes, "~s~n", [TS]),
-					io:format(TraceFileDes, "~s~n", [Info]),
-					log_server_loop(TraceFileDes, LogLevel);
-				true -> 
-					log_server_loop(TraceFileDes, LogLevel)
-			end;
+		{_From, {trace, Info}} ->
+			TS = get_time_micro(erlang:timestamp()),
+			io:format(TraceFileDes, "~s~n", [TS]),
+			io:format(TraceFileDes, "~s~n", [Info]),
+			log_server_loop(TraceFileDes);
 		{_From, {crash, PidName, Pid, ExceptionClass, Term, StackTrace}} ->
 			TS = get_time_micro(erlang:timestamp()),
 			io:format(TraceFileDes, "~n~s~n", [TS]),
@@ -778,12 +777,13 @@ log_server_loop(TraceFileDes, LogLevel) ->
             io:format(TraceFileDes, "Worker ~p(~w) crashed due to exception ~w: ~w~n",
 					  [PidName, Pid, ExceptionClass, Term]),
 			io:format(TraceFileDes, "stacktrace:~n~p~n",[StackTrace]),
-			io:format(TraceFileDes, "=========================== Crash Report End ===========================~n~n",[])
+			io:format(TraceFileDes, "=========================== Crash Report End ===========================~n~n",[]),
+			log_server_loop(TraceFileDes)
 	end.
 
 
 %% ====================================================================
-%% log(Format, VarList, LogLevel)
+%% log(Format, VarList)
 %%
 %% start a server to do trace work
 %%
@@ -791,11 +791,17 @@ log_server_loop(TraceFileDes, LogLevel) ->
 %%
 %% output:
 %% ====================================================================
-logger(Format, VarList, LogLevel) ->
+logger(Format, VarList, RxLogLevel) ->
 	
-	Info = io_lib:format(Format, VarList),
-	
-	logproc ! {self(), {trace, LogLevel, Info}}.
+	LogLevel = ets:lookup_element(log_table, log_level, 2),
+		
+	if
+		LogLevel >= RxLogLevel ->
+			Info = io_lib:format(Format, VarList),
+			logproc ! {self(), {trace, Info}};
+		true ->
+			ok
+	end.
 
 %% ====================================================================
 generate_crash_dump(PidName,Pid,ExceptionClass,Term,StackTrace) ->
