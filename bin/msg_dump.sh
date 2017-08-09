@@ -33,6 +33,9 @@ case "$1" in
     "check")
         erl -noshell -s command check_msg_dump &
         ;;
+    "show")
+        erl -noshell -s command show_msg_dump &
+        ;;
     *)
         usage
         exit 1

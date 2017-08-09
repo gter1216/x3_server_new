@@ -9,11 +9,11 @@
 # sub function
 usage(){
     echo "usage: "
-    echo "   ./x3_server start   :"
-    echo "        start a x3 server with configuration defined in config.txt"
-    echo "   ./x3_server stop    :" 
+    echo "   ./x3_server start xxu  :"
+    echo "        start a x3 server with server name xxu, server name is mandatory"
+    echo "   ./x3_server stop       :" 
     echo "        stop a x3 server"
-    echo "   ./x3_server stop all :"
+    echo "   ./x3_server stop all   :"
     echo "        kill all the Erlang VM process belongs to the user"
 }
 
@@ -30,25 +30,20 @@ fi
 
 case "$1" in
     "start")
-        if [ "$2" = debug ]
+        if [ "$2" ]
         then
-           sleep 1s
-           #cd ../src && erlc *.erl && cd -
-           #erl -s x3_server start -boot start_sasl -config elog.config &
-           erl -s x3_server start &
-        else
-           if [ $# -gt 1 ]
+           if [ $# -gt 2 ]
            then
                usage
-           elif [ $# -eq 1 ]
-           then
-               sleep 1s
-               #cd ../src && erlc *.erl && cd -
-               #erl -noshell -s x3_server start -boot start_sasl -config elog.config &
-               erl -noshell -s x3_server start &
            else
-               usage
+               sleep 1s
+               # erl -sname x2 -remsh x1@xxu-ProLiant-DL380-G7
+               erl -sname x1 -s x3_server -detached
+               sleep 0.5s
+               cat ./tmp.log
            fi
+        else
+            usage
         fi
         ;;
     "stop")
