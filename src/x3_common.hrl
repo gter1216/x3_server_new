@@ -11,4 +11,5 @@
 -record(rtp_dump, {rtp_dump_dir,
 				   rtp_dump_state}).
 -record(msg_dump, {msg_dump_file,
-				   msg_dump_state}).
+				   msg_dump_state,
+				   msg_dump_table}).

@@ -13,6 +13,7 @@
 -export([stop_server/0,
 		 start_msg_dump/0,
 		 stop_msg_dump/0,
+		 show_msg_dump/0,
 		 check_msg_dump/0,
 		 start_rtp_dump/0,
 		 stop_rtp_dump/0,
@@ -80,10 +81,48 @@ start_msg_dump() ->
 	receive
 		{tcp, Socket, Bin} ->
 			Ack = binary_to_term(Bin),
-			{ok, #msg_dump{msg_dump_file=MsgDumpFile}} = Ack
+			{ok, _} = Ack
 	end,
 	
-    io:format("~nstart statistic msg, the statistic file ~p generated ~n", [MsgDumpFile]),
+    io:format("~nstart statistic msg~n"),
+
+	%% close the socket
+ 	ok = gen_tcp:close(Socket),
+	
+	init:stop().
+
+
+%% ==================================================================
+%% show_msg_dump
+%% 
+%% ==================================================================
+show_msg_dump() ->
+    
+    {ok, Terms} = file:consult("../bin/config.txt"),
+	
+	[_StartPortList, _StopPortList, Ipv4Addr, _Ipv6Addr, SelfPort, _LogLevel] = Terms,
+	
+    Command = {show_dump_msg, #msg_dump{}},
+	
+	Bytes = term_to_binary(Command),
+	
+	%% connect to LIC server and return the socket.
+    {ok, Socket} = gen_tcp:connect(Ipv4Addr, 
+								   SelfPort, 
+								   [binary, {packet, 0}]),
+	
+	%% send message
+	ok = gen_tcp:send(Socket, Bytes),
+	
+    %% receive message
+
+	receive
+		{tcp, Socket, Bin} ->
+			Ack = binary_to_term(Bin),
+			{ok, #msg_dump{msg_dump_table=MsgDumpTable}} = Ack
+	end,
+	
+    io:format("~nmsg dump table is:~n~p~n", [MsgDumpTable]),
 
 	%% close the socket
  	ok = gen_tcp:close(Socket),
@@ -144,11 +183,10 @@ check_msg_dump() ->
 	receive
 		{tcp, Socket, Bin} ->
 			Ack = binary_to_term(Bin),
-			{ok, #msg_dump{msg_dump_state=MsgDumpState,
-						   msg_dump_file=MsgDumpFile}} = Ack
+			{ok, #msg_dump{msg_dump_state=MsgDumpState}} = Ack
 	end,
 	
-	io:format("~nmsg dump state is ~p~nmsg dump file is ~p~n",[MsgDumpState,MsgDumpFile]),
+	io:format("~nmsg dump state is ~p~n",[MsgDumpState]),
 
 	%% close the socket
  	ok = gen_tcp:close(Socket),

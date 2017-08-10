@@ -43,10 +43,14 @@ start() ->
 	
 	{Ipv4PortList, Ipv6PortList} = StartPortList,
 	
-	io:format("Listening ipv4 addr: ~p, port: ~p~n", [Ipv4Addr, Ipv4PortList]),
-	io:format("Listening ipv6 addr: ~p, port: ~p~n", [Ipv6Addr, Ipv6PortList]),
-	io:format("Server self port is ~p~n", [SelfPort]),
-	io:format("Log level is ~p~n", [LogLevel]),
+	{ok, Dir} = file:get_cwd(),
+	TmpLogFile = Dir++"/tmp.log",
+	{ok, TmpLogFileDes} = file:open(TmpLogFile, [write]),
+	
+	io:format(TmpLogFileDes,"Listening ipv4 addr: ~p, port: ~p~n", [Ipv4Addr, Ipv4PortList]),
+	io:format(TmpLogFileDes,"Listening ipv6 addr: ~p, port: ~p~n", [Ipv6Addr, Ipv6PortList]),
+	io:format(TmpLogFileDes,"Server self port is ~p~n", [SelfPort]),
+	io:format(TmpLogFileDes,"Log level is ~p~n", [LogLevel]),
 	
 	ok = table_init(),
 	
@@ -54,7 +58,7 @@ start() ->
 	
 	{ok, LogFile} = log_init(list_to_atom(LogLevel)),
 	
-	io:format("Please check server runnning log ~p for details!~n", [LogFile]),
+	io:format(TmpLogFileDes, "Please check server runnning log ~p for details!~n", [LogFile]),
 	
 	{ok, Ipv4AddrStr} = inet:parse_address(Ipv4Addr),
 	
@@ -91,7 +95,7 @@ start() ->
 						  end, [], Ipv6PortList),
 	
 	start_parent_server(SelfPort),
-	
+
 	ok.
 
 
@@ -188,20 +192,33 @@ handle_command(Socket, Command) ->
 			Ack = {ok, #msg_dump{msg_dump_file=MsgDumpFile}},
 			
 			gen_tcp:send(Socket, term_to_binary(Ack));
+		
+		{show_dump_msg, _Arg} ->
+			MsgDumpTable = ets:tab2list(pm_table),
+			Ack = {ok, #msg_dump{msg_dump_table=MsgDumpTable}},
+			gen_tcp:send(Socket, term_to_binary(Ack));
 			
 		{stop_dump_msg, _Arg} ->
-			MsgDumpFile = ets:lookup_element(feature_table, dump_msg, 3),
-			{ok, IoDevice} = file:open(MsgDumpFile, [write]),
-			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]),
+%% 			MsgDumpFile = ets:lookup_element(feature_table, dump_msg, 3),
+%% 			{ok, IoDevice} = file:open(MsgDumpFile, [write]),
+%% 			io:format(IoDevice, "message summary is: ~n ~p", [ets:tab2list(pm_table)]),
 			%% enable msg dump feature
-			ets:insert(feature_table, [{dump_msg, off, null}]);
+			ets:insert(feature_table, [{dump_msg, off, null}]),
+			
+			ets:insert(pm_table, [{createLictReq, 0},
+								  {createLictAckSucc, 0},
+								  {createLictAckFail, 0},
+								  {createLictAck, 0},
+								  {deleteLictReq, 0},
+								  {deleteLictAck, 0},
+								  {x3CheckStateReq, 0},
+								  {x3CheckStateAck, 0},
+								  {communicationContentReport, 0}]);
 		
 		{check_dump_msg, _Arg} ->
 			MsgDumpState = ets:lookup_element(feature_table, dump_msg, 2),
-			MsgDumpFile = ets:lookup_element(feature_table, dump_msg, 3),
 			
-			Ack = {ok, #msg_dump{msg_dump_file=MsgDumpFile,
-								 msg_dump_state=MsgDumpState}},
+			Ack = {ok, #msg_dump{msg_dump_state=MsgDumpState}},
 			
 			gen_tcp:send(Socket, term_to_binary(Ack));
 		
@@ -505,14 +522,16 @@ handle_create_lict_req(Msg) ->
 			on ->
 				logger("Error: 7510 request to create an existed X3 tunnel~p", [Msg], log1),
 				io:format("Error: 7510 request to create an existed X3 tunnel~p~n",[Msg]),
+				update_counter(createLictAckFail),
 				#'CreateLICTAck'{messageSerialNo = MsgSerialNo,
 								 icidValue = IcidValue,
 								 'cCC-ID' = CCCId,
 								 x3TunnelCreateResult = tunnelCreateFail,
-								 x3TunnelFailureReason = monitorNumberBeSet};
+								 x3TunnelFailureReason = otherReason};
 			State when State == off orelse
 						   State == undefined ->
 				update_x3_state(IcidValue, CCCId, on),
+				update_counter(createLictAckSucc),
 				#'CreateLICTAck'{messageSerialNo = MsgSerialNo,
 								 icidValue = IcidValue,
 								 'cCC-ID' = CCCId,
@@ -526,7 +545,9 @@ handle_create_lict_req(Msg) ->
 	logger("Worker ~w send create lict ack msg ~p", [get(pid_name), X3CmdMessage], log2),
 	logger("Worker ~w send data ~p", [get(pid_name), Bytes], log3),
 	
-	gen_tcp:send(Socket, Bytes).
+	gen_tcp:send(Socket, Bytes),
+	
+	update_counter(createLictAck).
 	
 	
 
@@ -572,7 +593,9 @@ handle_delete_lict_req(Msg) ->
 	logger("Worker ~w send delete lict ack msg ~p", [get(pid_name), X3CmdMessage], log2),
 	logger("Worker ~w send data ~p", [get(pid_name), Bytes], log3),
 	
-	gen_tcp:send(Socket, Bytes).
+	gen_tcp:send(Socket, Bytes),
+	
+	update_counter(deleteLictAck).
 
 
 %% ====================================================================
@@ -602,7 +625,9 @@ handle_x3_check_state_req(Msg) ->
 	
 	logger("Worker ~w send data ~p", [get(pid_name), Bytes], log3),
 	
-	gen_tcp:send(Socket, Bytes).
+	gen_tcp:send(Socket, Bytes),
+	
+	update_counter(x3CheckStateAck).
 
 
 %% ====================================================================
@@ -678,8 +703,13 @@ table_init() ->
 					   public]),
 	
 	ets:insert(pm_table, [{createLictReq, 0},
+						  {createLictAckSucc, 0},
+						  {createLictAckFail, 0},
+						  {createLictAck, 0},
 						  {deleteLictReq, 0},
+						  {deleteLictAck, 0},
 						  {x3CheckStateReq, 0},
+						  {x3CheckStateAck, 0},
 						  {communicationContentReport, 0}]),
 	
 	ets:new(user_table, [named_table,
