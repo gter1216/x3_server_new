@@ -38,7 +38,7 @@ case "$1" in
            else
                sleep 1s
                # erl -sname x2 -remsh x1@xxu-ProLiant-DL380-G7
-               erl -sname x1 -s x3_server -detached
+               erl -sname $2 -s x3_server -detached
                sleep 0.5s
                cat ./tmp.log
            fi
